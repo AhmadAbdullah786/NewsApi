@@ -1,34 +1,55 @@
-﻿namespace NewsApi.Services
+﻿using Microsoft.Extensions.Configuration;
+using NewsApi.Models;
+using Newtonsoft.Json;
+using System;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public class NewsApiService
 {
-    using Microsoft.Extensions.Configuration;
-    using System;
-    using System.Net.Http;
-    using System.Threading.Tasks;
+    private readonly IConfiguration _configuration;
+    private readonly HttpClient _httpClient;
 
-    public class NewsApiService
+    public NewsApiService(IConfiguration configuration, HttpClient httpClient)
     {
-        private readonly IConfiguration _configuration;
-        private readonly HttpClient _httpClient;
+        _configuration = configuration;
+        _httpClient = httpClient;
+    }
 
-        public NewsApiService(IConfiguration configuration, HttpClient httpClient)
+    public async Task<List<NewsArticle>> GetRecentNewsAsync(string companyName)
+    {
+        string apiKey = _configuration["AppSettings:NewsApiKey"];
+        string encodedCompanyName = Uri.EscapeDataString(companyName);
+        string apiUrl = $"https://newsapi.org/v2/everything?q={encodedCompanyName}&apiKey={apiKey}";
+        HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
+
+        if (response.IsSuccessStatusCode)
         {
-            _configuration = configuration;
-            _httpClient = httpClient;
+            string content = await response.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<NewsApiResponse>(content);
+
+
+            // Filter and return the 5 most recent articles
+            var recentArticles = result.Articles
+                .Where(article => article.Title.Contains(companyName, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(article => article.PublishedAt)
+                .Take(5)
+                .Select(article => new NewsArticle
+                {
+                    Id = article.Id,
+                    Title = article.Title,
+                    Author = article.Author,
+                    Content = article.Content,
+                    ArticleLink = article.ArticleLink,
+                    PublishedAt = article.PublishedAt,
+                    // Include other properties if needed
+                })
+                .ToList();
+
+            return recentArticles;
         }
 
-        public async Task<string> GetNewsAsync(string companyName)
-        {
-            string apiKey = _configuration["AppSettings:NewsApiKey"];
-            string apiUrl = $"https://newsapi.org/v2/everything?q={companyName}&language=en&apiKey={apiKey}";
-
-            HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadAsStringAsync();
-            }
-
-            throw new Exception("Unable to fetch news.");
-        }
+        throw new Exception("Unable to fetch news.");
     }
 }
