@@ -13,6 +13,8 @@ namespace NewsApi.Models
         public DateTime PublicationDate { get; set; }
         [JsonProperty("url")]
         public string ArticleLink { get; set; }
+        public string  Language { get; set; }
+
         [JsonProperty("publishedAt")]
         public object PublishedAt { get; internal set; }
     }

@@ -15,12 +15,12 @@ namespace NewsApi.Controllers
         }
 
         [HttpGet]
-        [Route("GetRecentNews")]
-        public async Task<IActionResult> GetRecentNews(string companyName)
+        [Route("GetRecentNewsByCompanyNameAndLanguage")]
+        public async Task<IActionResult> GetRecentNewsByCompanyNameAndLanguage(string companyName, string language)
         {
             try
             {
-                var news = await _newsApiService.GetRecentNewsAsync(companyName);
+                var news = await _newsApiService.GetRecentNewsByCompanyNameAndLanguageAsync(companyName,language);
                 return Ok(news);
             }
             catch (Exception ex)

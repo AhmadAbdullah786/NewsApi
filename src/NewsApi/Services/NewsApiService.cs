@@ -17,11 +17,11 @@ public class NewsApiService
         _httpClient = httpClient;
     }
 
-    public async Task<List<NewsArticle>> GetRecentNewsAsync(string companyName)
+    public async Task<List<NewsArticle>> GetRecentNewsByCompanyNameAndLanguageAsync(string companyName, string language)
     {
         string apiKey = _configuration["AppSettings:NewsApiKey"];
         string encodedCompanyName = Uri.EscapeDataString(companyName);
-        string apiUrl = $"https://newsapi.org/v2/everything?q={encodedCompanyName}&apiKey={apiKey}";
+        string apiUrl = $"https://newsapi.org/v2/everything?q={encodedCompanyName}&language={language}&apiKey={apiKey}";
         HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
 
         if (response.IsSuccessStatusCode)
@@ -37,11 +37,12 @@ public class NewsApiService
                 .Take(5)
                 .Select(article => new NewsArticle
                 {
-                    Id = article.Id,
+                    //Id = article.Id,
                     Title = article.Title,
                     Author = article.Author,
                     Content = article.Content,
                     ArticleLink = article.ArticleLink,
+                    Language = article.Language,
                     PublishedAt = article.PublishedAt,
                     // Include other properties if needed
                 })
