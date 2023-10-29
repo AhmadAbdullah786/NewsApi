@@ -17,40 +17,59 @@ public class NewsApiService
         _httpClient = httpClient;
     }
 
-    public async Task<List<NewsArticle>> GetRecentNewsByCompanyNameAndLanguageAsync(string companyName, string language)
+    public async Task<List<NewsArticle>> GetRecentNewsByCompanyNameAndInMultipleLanguageAsync(string companyName, string languageCodes)
     {
         string apiKey = _configuration["AppSettings:NewsApiKey"];
         string encodedCompanyName = Uri.EscapeDataString(companyName);
-        string apiUrl = $"https://newsapi.org/v2/everything?q={encodedCompanyName}&language={language}&apiKey={apiKey}";
-        HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
 
-        if (response.IsSuccessStatusCode)
+        List<NewsArticle> recentArticles = new List<NewsArticle>();
+
+        var languages = languageCodes.Split(',');
+
+        try
         {
-            string content = await response.Content.ReadAsStringAsync();
-            var result = JsonConvert.DeserializeObject<NewsApiResponse>(content);
+            foreach (var language in languages)
+            {
+                string apiUrl = $"https://newsapi.org/v2/everything?q={encodedCompanyName}&language={language}&apiKey={apiKey}";
+                HttpResponseMessage response = await _httpClient.GetAsync(apiUrl);
 
-
-            // Filter and return the 5 most recent articles
-            var recentArticles = result.Articles
-                .Where(article => article.Title.Contains(companyName, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(article => article.PublishedAt)
-                .Take(5)
-                .Select(article => new NewsArticle
+                if (response.IsSuccessStatusCode)
                 {
-                    //Id = article.Id,
-                    Title = article.Title,
-                    Author = article.Author,
-                    Content = article.Content,
-                    ArticleLink = article.ArticleLink,
-                    Language = article.Language,
-                    PublishedAt = article.PublishedAt,
-                    // Include other properties if needed
-                })
-                .ToList();
+                    string content = await response.Content.ReadAsStringAsync();
+                    var result = JsonConvert.DeserializeObject<NewsApiResponse>(content);
 
-            return recentArticles;
+                    
+
+                    // Filter and return the 5 most recent articles for each language
+                    var languageArticles = result.Articles
+                        .Where(article => article.Title.Contains(companyName, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(article => article.PublishedDate)
+                        .Take(5)
+                        .Select(article => new NewsArticle
+                        {
+                            Title = article.Title,
+                            Author = article.Author,
+                            Content = article.Content,
+                            ArticleLink = article.ArticleLink,
+                            PublishedDate = article.PublishedDate,
+                            Language = language
+                        })
+                        .ToList();
+
+                    recentArticles.AddRange(languageArticles);
+                }
+                else
+                {
+                    throw new Exception($"Unable to fetch news for language: {language}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle the exception, log it, and return an error response as needed
+            throw new Exception($"An error occurred while fetching news: {ex.Message}");
         }
 
-        throw new Exception("Unable to fetch news.");
+        return recentArticles;
     }
 }
